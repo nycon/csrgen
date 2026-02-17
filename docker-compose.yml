@@ -1,0 +1,14 @@
+services:
+  csrgen:
+    build: .
+    container_name: csrgen
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+*.p12
+*.key
+*.csr
+.DS_Store
+.idea/
+.vscode/
+.cursor/
