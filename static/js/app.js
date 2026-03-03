@@ -242,14 +242,17 @@
 
         const keyFile = $("#p12-key-file").files[0];
         const certFile = $("#p12-cert-file").files[0];
+        const chainFile = $("#p12-chain-file").files[0];
+        const targetFormat = $("#target-format").value;
         const password = $("#p12-password").value;
+        const keyPassword = $("#p12-key-password").value;
 
-        if (!keyFile) {
-            showToast("Bitte wählen Sie eine Schlüsseldatei aus.", "warning");
-            return;
-        }
         if (!certFile) {
             showToast("Bitte wählen Sie eine Zertifikatsdatei aus.", "warning");
+            return;
+        }
+        if ((targetFormat === "pfx" || targetFormat === "p12") && !keyFile) {
+            showToast("Für PFX/P12 wird eine Schlüsseldatei benötigt.", "warning");
             return;
         }
 
@@ -259,9 +262,12 @@
 
         try {
             const formData = new FormData();
-            formData.append("key", keyFile);
             formData.append("cert", certFile);
+            if (keyFile) formData.append("key", keyFile);
+            if (chainFile) formData.append("chain", chainFile);
+            formData.append("target_format", targetFormat);
             formData.append("password", password);
+            formData.append("key_password", keyPassword);
 
             const res = await fetch("/api/convert-p12", {
                 method: "POST",
@@ -280,7 +286,7 @@
             const filename = match ? match[1] : "certificate.p12";
 
             downloadBlob(blob, filename);
-            showToast("P12-Datei erfolgreich erstellt!", "success");
+            showToast(`${filename} erfolgreich erstellt!`, "success");
         } catch (err) {
             showToast("Verbindungsfehler. Bitte versuchen Sie es erneut.", "error");
         } finally {
@@ -575,11 +581,19 @@
         /* P12 form */
         setupUploadZone("key-upload-zone", "p12-key-file", "key-file-name");
         setupUploadZone("cert-upload-zone", "p12-cert-file", "cert-file-name");
+        setupUploadZone("chain-upload-zone", "p12-chain-file", "chain-file-name");
         $("#p12-form").addEventListener("submit", convertP12);
 
         /* P12 password toggle */
         $("#p12-pw-toggle").addEventListener("click", function () {
             const input = $("#p12-password");
+            const isPassword = input.type === "password";
+            input.type = isPassword ? "text" : "password";
+            this.classList.toggle("active", isPassword);
+            this.title = isPassword ? "Passwort verbergen" : "Passwort anzeigen";
+        });
+        $("#p12-key-pw-toggle").addEventListener("click", function () {
+            const input = $("#p12-key-password");
             const isPassword = input.type === "password";
             input.type = isPassword ? "text" : "password";
             this.classList.toggle("active", isPassword);

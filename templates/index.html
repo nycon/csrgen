@@ -271,10 +271,10 @@
     <section id="tab-p12" class="tab-content hidden" role="tabpanel">
         <div class="card">
             <div class="card-header">
-                <h2>P12 / PKCS#12 Konvertierung</h2>
+                <h2>Windows Zertifikats-Konvertierung</h2>
             </div>
             <div class="card-body">
-                <p class="card-description">Konvertieren Sie einen privaten Schlüssel und ein Zertifikat in eine PKCS#12-Datei (.p12).</p>
+                <p class="card-description">Konvertieren Sie Zertifikate in gängige Windows-Formate wie PFX/P12, CER und P7B.</p>
 
                 <form id="p12-form" enctype="multipart/form-data">
                     <div class="upload-grid">
@@ -283,8 +283,8 @@
                             <input type="file" id="p12-key-file" accept=".key,.pem,.txt" class="upload-input">
                             <div class="upload-content">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                                <span class="upload-label">Privater Schlüssel (.key)</span>
-                                <span class="upload-hint">Datei hierher ziehen oder klicken</span>
+                                <span class="upload-label">Privater Schlüssel (.key / .pem)</span>
+                                <span class="upload-hint">Für PFX/P12 benötigt</span>
                             </div>
                             <div class="upload-file-name hidden" id="key-file-name"></div>
                         </div>
@@ -293,18 +293,51 @@
                             <input type="file" id="p12-cert-file" accept=".crt,.pem,.cer,.txt" class="upload-input">
                             <div class="upload-content">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                                <span class="upload-label">Zertifikat (.crt / .pem)</span>
+                                <span class="upload-label">Zertifikat (.crt / .pem / .cer)</span>
                                 <span class="upload-hint">Datei hierher ziehen oder klicken</span>
                             </div>
                             <div class="upload-file-name hidden" id="cert-file-name"></div>
                         </div>
                     </div>
 
-                    <div class="form-group" style="max-width: 400px; margin-top: 1.5rem;">
-                        <label for="p12-password">Passwort (optional)</label>
+                    <div class="upload-zone" id="chain-upload-zone" style="margin-top: 1rem;">
+                        <input type="file" id="p12-chain-file" accept=".crt,.pem,.cer,.txt" class="upload-input">
+                        <div class="upload-content">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                            <span class="upload-label">Zertifikatskette / Intermediate (optional)</span>
+                            <span class="upload-hint">Wird in PFX/P12/P7B eingebunden</span>
+                        </div>
+                        <div class="upload-file-name hidden" id="chain-file-name"></div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label for="target-format">Zielformat</label>
+                            <select id="target-format" name="target_format">
+                                <option value="pfx">PFX (.pfx) – Windows Import</option>
+                                <option value="p12">P12 (.p12) – PKCS#12</option>
+                                <option value="cer_der">CER (.cer, DER) – Binär</option>
+                                <option value="cer_pem">CER (.cer, PEM) – Text</option>
+                                <option value="p7b">P7B (.p7b) – Zertifikatskette</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="p12-password">Export-Passwort (optional)</label>
+                            <div class="password-field">
+                                <input type="password" id="p12-password" name="password" placeholder="Passwort für PFX/P12">
+                                <button type="button" class="password-toggle" id="p12-pw-toggle" title="Passwort anzeigen" aria-label="Passwort anzeigen">
+                                    <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="max-width: 500px; margin-top: 1rem;">
+                        <label for="p12-key-password">Schlüssel-Passwort (optional)</label>
                         <div class="password-field">
-                            <input type="password" id="p12-password" name="password" placeholder="Passwort für die P12-Datei">
-                            <button type="button" class="password-toggle" id="p12-pw-toggle" title="Passwort anzeigen" aria-label="Passwort anzeigen">
+                            <input type="password" id="p12-key-password" name="key_password" placeholder="Nur wenn der private Key verschlüsselt ist">
+                            <button type="button" class="password-toggle" id="p12-key-pw-toggle" title="Passwort anzeigen" aria-label="Passwort anzeigen">
                                 <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                             </button>
@@ -314,7 +347,7 @@
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary btn-lg" id="convert-p12-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-                            In P12 konvertieren
+                            Exportieren
                         </button>
                     </div>
                 </form>

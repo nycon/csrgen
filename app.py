@@ -1,5 +1,6 @@
 import io
 import ipaddress
+import re
 from datetime import datetime, timezone
 
 from flask import Flask, render_template, request, jsonify, send_file
@@ -7,7 +8,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.hazmat.primitives.serialization import pkcs12, pkcs7
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
@@ -108,45 +109,98 @@ def generate_csr():
 def convert_p12():
     key_file = request.files.get("key")
     cert_file = request.files.get("cert")
+    chain_file = request.files.get("chain")
     password = request.form.get("password", "")
+    key_password = request.form.get("key_password", "")
+    target_format = (request.form.get("target_format", "p12") or "p12").lower()
 
-    if not key_file or not cert_file:
-        return jsonify({"error": "Schlüssel- und Zertifikatsdatei werden benötigt."}), 400
+    if not cert_file:
+        return jsonify({"error": "Zertifikatsdatei wird benötigt."}), 400
+
+    supported_formats = {"p12", "pfx", "cer_der", "cer_pem", "p7b"}
+    if target_format not in supported_formats:
+        return jsonify({"error": "Unbekanntes Zielformat."}), 400
 
     try:
-        key_data = key_file.read()
         cert_data = cert_file.read()
+        chain_data = chain_file.read() if chain_file else b""
 
-        private_key = serialization.load_pem_private_key(key_data, password=None)
-        certificate = x509.load_pem_x509_certificate(cert_data)
+        certificates = _load_certificates_from_data(cert_data)
+        if not certificates:
+            return jsonify({"error": "Zertifikat konnte nicht gelesen werden."}), 400
+        certificate = certificates[0]
 
-        encryption = (
-            serialization.BestAvailableEncryption(password.encode())
-            if password
-            else serialization.NoEncryption()
-        )
-
-        p12_data = pkcs12.serialize_key_and_certificates(
-            name=None,
-            key=private_key,
-            cert=certificate,
-            cas=None,
-            encryption_algorithm=encryption,
-        )
+        chain_certs = _load_certificates_from_data(chain_data) if chain_data else []
 
         cn = ""
         try:
             cn = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
         except (IndexError, Exception):
             pass
-        filename = f"{cn or 'certificate'}.p12"
+        base_filename = cn or "certificate"
 
-        return send_file(
-            io.BytesIO(p12_data),
-            mimetype="application/x-pkcs12",
-            as_attachment=True,
-            download_name=filename,
-        )
+        if target_format in {"p12", "pfx"}:
+            if not key_file:
+                return jsonify({"error": "Für P12/PFX wird eine Schlüsseldatei benötigt."}), 400
+
+            key_data = key_file.read()
+            private_key = _load_private_key_from_data(
+                key_data,
+                key_password.encode() if key_password else None,
+            )
+
+            encryption = (
+                serialization.BestAvailableEncryption(password.encode())
+                if password
+                else serialization.NoEncryption()
+            )
+            ext = "pfx" if target_format == "pfx" else "p12"
+            bundle_data = pkcs12.serialize_key_and_certificates(
+                name=base_filename.encode(),
+                key=private_key,
+                cert=certificate,
+                cas=chain_certs or None,
+                encryption_algorithm=encryption,
+            )
+            return send_file(
+                io.BytesIO(bundle_data),
+                mimetype="application/x-pkcs12",
+                as_attachment=True,
+                download_name=f"{base_filename}.{ext}",
+            )
+
+        if target_format == "cer_der":
+            der_data = certificate.public_bytes(serialization.Encoding.DER)
+            return send_file(
+                io.BytesIO(der_data),
+                mimetype="application/pkix-cert",
+                as_attachment=True,
+                download_name=f"{base_filename}.cer",
+            )
+
+        if target_format == "cer_pem":
+            pem_data = certificate.public_bytes(serialization.Encoding.PEM)
+            return send_file(
+                io.BytesIO(pem_data),
+                mimetype="application/x-pem-file",
+                as_attachment=True,
+                download_name=f"{base_filename}.cer",
+            )
+
+        if target_format == "p7b":
+            p7b_certs = [certificate] + chain_certs
+            p7b_data = pkcs7.serialize_certificates(
+                p7b_certs,
+                serialization.Encoding.DER,
+            )
+            return send_file(
+                io.BytesIO(p7b_data),
+                mimetype="application/x-pkcs7-certificates",
+                as_attachment=True,
+                download_name=f"{base_filename}.p7b",
+            )
+
+        return jsonify({"error": "Konvertierung nicht möglich."}), 400
 
     except Exception as exc:
         return jsonify({"error": f"Konvertierungsfehler: {exc}"}), 400
@@ -198,6 +252,31 @@ def _build_san_list(cn, san_names):
                 sans.append(x509.DNSName(name))
             seen.add(name.lower())
     return sans
+
+
+def _load_private_key_from_data(key_data, password):
+    try:
+        return serialization.load_pem_private_key(key_data, password=password)
+    except ValueError:
+        return serialization.load_der_private_key(key_data, password=password)
+
+
+def _load_certificates_from_data(cert_data):
+    if not cert_data:
+        return []
+
+    certificates = []
+    if b"-----BEGIN CERTIFICATE-----" in cert_data:
+        pem_blocks = re.findall(
+            rb"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----",
+            cert_data,
+            flags=re.DOTALL,
+        )
+        for block in pem_blocks:
+            certificates.append(x509.load_pem_x509_certificate(block))
+    else:
+        certificates.append(x509.load_der_x509_certificate(cert_data))
+    return certificates
 
 
 def _extract_csr_details(csr):
