@@ -10,8 +10,13 @@ A Docker-based web application for creating TLS/SSL Certificate Signing Requests
 - **Standard Certificates** – Single domain certificates
 - **Multi-Domain (SAN)** – Multiple domains in a single certificate
 - **Wildcard Certificates** – `*.domain.com` for all subdomains
-- **P12 Conversion** – Convert key + certificate to PKCS#12 format
+- **Windows Export Formats** – Export as `PFX`, `P12`, `CER` (DER/PEM), and `P7B`
+- **Chain Support** – Optional intermediate/chain certificate upload for PFX/P12/P7B
+- **Encrypted Key Support** – Optional private key password input during export
 - **CSR / Certificate Inspector** – View contents of CSR and certificate files
+- **Inspector Drag & Drop** – Drop `.pem/.csr/.crt/.cer` files directly into the inspector
+- **One-Click Reset** – Reset CSR generation form and results to defaults after download
+- **Built-in Format Guide** – In-app help for IIS/RDP/MMC/Java use-cases
 - **Key Size Selection** – 2048 or 4096 bit
 - **Dark Mode** – Easy on the eyes
 - **Security First** – Private keys are never stored on the server
@@ -33,10 +38,18 @@ A Docker-based web application for creating TLS/SSL Certificate Signing Requests
 ```bash
 git clone https://github.com/nycon/csrgen.git
 cd csrgen
-docker compose up -d
+docker compose up -d --build
 ```
 
 Open **http://localhost:8443** in your browser.
+
+### macOS Fast Start
+
+```bash
+cd /Users/$USER/git/csrgen
+docker compose up -d --build
+open http://localhost:8443
+```
 
 ---
 
@@ -394,6 +407,21 @@ Then restart:
 ```bash
 docker compose up -d
 ```
+
+### Certificate Export Formats (Windows/Server)
+
+| Format | Includes Private Key | Typical Use |
+|---|---|---|
+| `PFX (.pfx)` | Yes | Windows IIS, RDP, MMC import |
+| `P12 (.p12)` | Yes | PKCS#12 compatible systems |
+| `CER (.cer, DER)` | No | Public cert in binary format |
+| `CER (.cer, PEM)` | No | Public cert in text format |
+| `P7B (.p7b)` | No | Certificate + chain transfer |
+
+Notes:
+- For `PFX/P12`, upload a private key.
+- For encrypted private keys, fill in **Key Password**.
+- For complete trust chains, upload **Chain / Intermediate** certificate.
 
 ### Environment Variables
 
