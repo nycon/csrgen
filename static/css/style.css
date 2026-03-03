@@ -945,6 +945,14 @@ textarea {
     display: none;
 }
 
+.results-actions {
+    margin-top: -0.5rem;
+}
+
+#inspect-upload-zone {
+    margin-bottom: 1rem;
+}
+
 /* ===== Toast Notifications ===== */
 #toast-container {
     position: fixed;

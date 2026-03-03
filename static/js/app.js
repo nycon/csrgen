@@ -214,6 +214,28 @@
         section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    function resetGeneratorState() {
+        generatedCSR = "";
+        generatedKey = "";
+        generatedCN = "";
+
+        const form = $("#csr-form");
+        form.reset();
+
+        $("#field-c").value = "";
+        $("#san-list").innerHTML = "";
+        $("#results-section").classList.add("hidden");
+        $("#csr-output").textContent = "";
+        $("#key-output").textContent = "";
+        $("#key-output-wrap").classList.add("hidden");
+        $("#show-key-toggle").checked = false;
+        $("#csr-details-table tbody").innerHTML = "";
+
+        selectCertType("standard");
+        $("#field-cn").focus();
+        showToast("Alles wurde auf Standard zurückgesetzt.", "info");
+    }
+
     /* ===== P12 Conversion ===== */
     async function convertP12(event) {
         event.preventDefault();
@@ -429,6 +451,57 @@
         }
     }
 
+    function setupInspectUploadZone() {
+        const zone = $("#inspect-upload-zone");
+        const input = $("#inspect-pem-file");
+        const fileName = $("#inspect-file-name");
+        const textArea = $("#inspect-pem");
+
+        const loadFile = file => {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                textArea.value = String(reader.result || "").trim();
+                fileName.textContent = file.name;
+                fileName.classList.remove("hidden");
+                zone.classList.add("has-file");
+                showToast("Datei geladen. Jetzt auf \"Prüfen\" klicken.", "success");
+            };
+            reader.onerror = () => {
+                showToast("Datei konnte nicht gelesen werden.", "error");
+            };
+            reader.readAsText(file);
+        };
+
+        ["dragover", "dragenter"].forEach(evt => {
+            zone.addEventListener(evt, e => {
+                e.preventDefault();
+                zone.classList.add("drag-over");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(evt => {
+            zone.addEventListener(evt, e => {
+                e.preventDefault();
+                zone.classList.remove("drag-over");
+            });
+        });
+
+        zone.addEventListener("drop", e => {
+            const file = e.dataTransfer?.files?.[0];
+            if (file) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                loadFile(file);
+            }
+        });
+
+        input.addEventListener("change", () => {
+            loadFile(input.files[0]);
+        });
+    }
+
     /* ===== Helpers ===== */
     function addDetailRow(tbody, label, value, isHtml = false) {
         const tr = document.createElement("tr");
@@ -490,6 +563,9 @@
             }
         });
 
+        /* Reset generator */
+        $("#reset-csr-btn").addEventListener("click", resetGeneratorState);
+
         /* Show/Hide key */
         $("#show-key-toggle").addEventListener("change", function () {
             const wrap = $("#key-output-wrap");
@@ -511,10 +587,14 @@
         });
 
         /* Inspect */
+        setupInspectUploadZone();
         $("#inspect-btn").addEventListener("click", inspectPEM);
         $("#inspect-clear-btn").addEventListener("click", () => {
             $("#inspect-pem").value = "";
             $("#inspect-results").classList.add("hidden");
+            $("#inspect-pem-file").value = "";
+            $("#inspect-file-name").classList.add("hidden");
+            $("#inspect-upload-zone").classList.remove("has-file");
         });
     }
 

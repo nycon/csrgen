@@ -258,6 +258,12 @@
                     </div>
                 </div>
             </div>
+            <div class="btn-row results-actions">
+                <button type="button" class="btn btn-outline" id="reset-csr-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+                    Alles zurücksetzen
+                </button>
+            </div>
         </div>
     </section>
 
@@ -324,6 +330,16 @@
             </div>
             <div class="card-body">
                 <p class="card-description">Fügen Sie einen CSR oder ein Zertifikat im PEM-Format ein, um dessen Inhalt zu prüfen.</p>
+
+                <div class="upload-zone" id="inspect-upload-zone">
+                    <input type="file" id="inspect-pem-file" accept=".pem,.crt,.cer,.csr,.txt" class="upload-input">
+                    <div class="upload-content">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">PEM-Datei hochladen (.pem/.csr/.crt)</span>
+                        <span class="upload-hint">Datei hierher ziehen oder klicken</span>
+                    </div>
+                    <div class="upload-file-name hidden" id="inspect-file-name"></div>
+                </div>
 
                 <div class="form-group">
                     <label for="inspect-pem">PEM-Inhalt</label>
