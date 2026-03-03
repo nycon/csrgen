@@ -333,6 +333,46 @@
                         </div>
                     </div>
 
+                    <div class="card format-help-card">
+                        <div class="card-header">
+                            <h2>Format-Hilfe: Was brauche ich wofür?</h2>
+                        </div>
+                        <div class="card-body">
+                            <table class="details-table">
+                                <tbody>
+                                    <tr>
+                                        <th>IIS / RDP / Windows MMC</th>
+                                        <td><span class="san-tag">PFX (.pfx)</span> mit Private Key und optionaler Zertifikatskette</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Allgemein PKCS#12</th>
+                                        <td><span class="san-tag">P12 (.p12)</span> wie PFX, plattformuebergreifend</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Public Certificate (Binary)</th>
+                                        <td><span class="san-tag">CER (.cer, DER)</span> nur Zertifikat, kein Private Key</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Public Certificate (Text)</th>
+                                        <td><span class="san-tag">CER (.cer, PEM)</span> nur Zertifikat, gut lesbar/editierbar</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Zertifikatskette weitergeben</th>
+                                        <td><span class="san-tag">P7B (.p7b)</span> Zertifikat + Kette, kein Private Key</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Java Keystore (JKS)</th>
+                                        <td>Nicht direkt exportiert. Erst <span class="san-tag">P12/PFX</span> erzeugen, dann mit keytool in JKS importieren.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="alert alert-warning" style="margin-top: 1rem;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <span>Wichtig: Private Keys sind nur in PFX/P12 enthalten. CER und P7B enthalten keinen Private Key.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="max-width: 500px; margin-top: 1rem;">
                         <label for="p12-key-password">Schlüssel-Passwort (optional)</label>
                         <div class="password-field">

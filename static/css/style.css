@@ -953,6 +953,11 @@ textarea {
     margin-bottom: 1rem;
 }
 
+.format-help-card {
+    margin-top: 1rem;
+    border-style: dashed;
+}
+
 /* ===== Toast Notifications ===== */
 #toast-container {
     position: fixed;
