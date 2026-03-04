@@ -43,6 +43,12 @@ docker compose up -d --build
 
 Open **http://localhost:8443** in your browser.
 
+If your system does not support `docker compose` yet, use:
+
+```bash
+docker-compose up -d --build
+```
+
 ### macOS Fast Start
 
 ```bash
@@ -101,6 +107,17 @@ macOS Monterey+ uses port 5000 for AirPlay Receiver. CSRgen already uses port 84
 ```yaml
 ports:
   - "9090:5000"   # change 9090 to any free port
+```
+
+**`unknown shorthand flag: 'd' in -d` or `docker: unknown command: docker compose`:**
+
+Your Docker CLI does not expose the Compose subcommand correctly.
+
+Use the standalone command instead:
+
+```bash
+docker-compose up -d --build
+docker-compose down
 ```
 
 ---
