@@ -1,5 +1,7 @@
 import io
 import ipaddress
+import logging
+import os
 import re
 from datetime import datetime, timezone
 
@@ -12,6 +14,73 @@ from cryptography.hazmat.primitives.serialization import pkcs12, pkcs7
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB upload limit
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("CSRGEN_SESSION_COOKIE_SECURE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+_logger = logging.getLogger("csrgen")
+if not _logger.handlers:
+    logging.basicConfig(level=os.getenv("CSRGEN_LOG_LEVEL", "INFO").upper())
+
+
+def _safe_download_basename(value: str, default: str = "certificate") -> str:
+    """
+    Best-effort sanitizer for filenames used in Content-Disposition.
+    Prevents path traversal, CRLF header injection, and weird characters.
+    """
+    v = (value or "").strip()
+    if not v:
+        return default
+    # Drop path separators and control chars
+    v = v.replace("/", "_").replace("\\", "_")
+    v = re.sub(r"[\r\n\t\0]", "_", v)
+    # Allow a conservative set of characters
+    v = re.sub(r"[^a-zA-Z0-9._-]", "_", v)
+    v = v.lstrip(".")  # avoid hidden files / empty basename
+    v = re.sub(r"_+", "_", v)
+    v = v.strip("._-")
+    if not v:
+        return default
+    return v[:80]
+
+
+@app.after_request
+def add_security_headers(resp):
+    # Clickjacking + sniffing protection
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    # Limit referrer leakage
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # Disable powerful APIs by default
+    resp.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    )
+    # Basic CSP (no inline scripts used)
+    resp.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "base-uri 'none'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "img-src 'self' data:; "
+        "style-src 'self'; "
+        "script-src 'self'",
+    )
+
+    # Only set HSTS when we're actually on HTTPS (or behind a proxy terminating TLS)
+    is_https = request.is_secure or request.headers.get("X-Forwarded-Proto", "").lower() == "https"
+    if is_https:
+        resp.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+    return resp
 
 
 @app.route("/")
@@ -101,8 +170,9 @@ def generate_csr():
 
         return jsonify({"csr": csr_pem, "key": key_pem, "cn": cn, "details": details})
 
-    except Exception as exc:
-        return jsonify({"error": f"Fehler bei der Generierung: {exc}"}), 500
+    except Exception:
+        _logger.exception("CSR generation failed")
+        return jsonify({"error": "Fehler bei der Generierung."}), 500
 
 
 @app.route("/api/convert-p12", methods=["POST"])
@@ -137,7 +207,7 @@ def convert_p12():
             cn = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
         except (IndexError, Exception):
             pass
-        base_filename = cn or "certificate"
+        base_filename = _safe_download_basename(cn or "certificate")
 
         if target_format in {"p12", "pfx"}:
             if not key_file:
@@ -202,8 +272,13 @@ def convert_p12():
 
         return jsonify({"error": "Konvertierung nicht möglich."}), 400
 
-    except Exception as exc:
-        return jsonify({"error": f"Konvertierungsfehler: {exc}"}), 400
+    except ValueError:
+        # e.g. wrong password, invalid key/cert formats
+        _logger.exception("P12 conversion failed (value error)")
+        return jsonify({"error": "Konvertierung fehlgeschlagen: Schlüssel/Zertifikat/Passwort prüfen."}), 400
+    except Exception:
+        _logger.exception("P12 conversion failed")
+        return jsonify({"error": "Konvertierung fehlgeschlagen."}), 400
 
 
 @app.route("/api/inspect", methods=["POST"])
@@ -221,16 +296,18 @@ def inspect_pem():
             csr = x509.load_pem_x509_csr(pem_bytes)
             details = _extract_csr_details(csr)
             return jsonify({"type": "csr", "details": details})
-        except Exception as exc:
-            return jsonify({"error": f"CSR konnte nicht gelesen werden: {exc}"}), 400
+        except Exception:
+            _logger.exception("Inspect CSR failed")
+            return jsonify({"error": "CSR konnte nicht gelesen werden."}), 400
 
     elif "BEGIN CERTIFICATE" in pem_text:
         try:
             cert = x509.load_pem_x509_certificate(pem_bytes)
             details = _extract_cert_details(cert)
             return jsonify({"type": "certificate", "details": details})
-        except Exception as exc:
-            return jsonify({"error": f"Zertifikat konnte nicht gelesen werden: {exc}"}), 400
+        except Exception:
+            _logger.exception("Inspect certificate failed")
+            return jsonify({"error": "Zertifikat konnte nicht gelesen werden."}), 400
 
     else:
         return jsonify({"error": "Unbekanntes PEM-Format. Bitte CSR oder Zertifikat einfügen."}), 400
